@@ -1,0 +1,32 @@
+/*
+ * SimpleModulationTest.c
+ *
+ * Created: 11/5/2012 9:10:33 PM
+ *  Author: jesbates
+ */ 
+
+
+#include <avr/io.h>
+#include <util/delay.h>				    // for _delay_ms()
+
+
+int main(void)
+{
+	
+	DDRC = 0x01;							// initialize port C
+
+
+	while(1)
+	{
+		
+		// LED on
+		PORTC = 0b00000001;            // PC0 = High = Vcc			(pin 23 on ATmega328)
+		_delay_ms(0.01315788);                // wait 500 milliseconds
+
+		//LED off
+		PORTC = 0b00000000;            // PC0 = Low = 0v
+		_delay_ms(0.01315788);                // wait 500 milliseconds
+		
+	}
+	
+}
