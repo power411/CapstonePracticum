@@ -1,0 +1,64 @@
+/*
+ * ModulationOnOff.c
+ *
+ * Created: 11/10/2012 3:56:55 PM
+ *  Author: jesbates
+ */ 
+
+
+
+
+#include <avr/io.h>
+#include <util/delay.h>									 // for _delay_ms()
+#include <avr/interrupt.h>
+
+volatile uint8_t portchistory = 0x00;					// used to determine which pin caused pin change interrupt
+
+#define LED_BIT 0
+#define LED_ON 1 << LED_BIT
+#define LED_OFF 0 << LED_BIT
+
+#define CLOCK_BIT 0
+#define CLOCK_ON 1 << CLOCK_BIT
+#define CLOCK_OFF 0 << CLOCK_BIT
+
+int main(void)
+{
+	//int i;												// will be used to determine if button is pressed to send IR signal
+	
+	// initialize i/o pins
+	DDRC = 0b00000001;									// initialize port C, sets pin 23 (PC0) as an output
+	PORTC = 0x00;										// leave off pull-up resistors in PORTC, sets output high
+	// end initialize i/o pins
+	
+
+	// prepare the timer but dont turn it on
+	OCR2A = 102;											// Output Compare (for Timer2) set at 13 clock cycles (76KHz would be 12.15 nanosec)
+	TCCR2A |= (1 << WGM21);;							// (sets timer to CTC mode)
+	TIMSK2 |= (1 << OCIE2A);							// (allows interrupts on compare match)
+	TCCR2B |= CLOCK_ON;								// make sure timer is not started
+	// end prepare of timer
+	
+	sei();												// enable interrupts
+	
+	while(1)
+	{
+		_delay_ms(5000);
+		TCCR2B = CLOCK_OFF;
+		_delay_ms(5000);
+		TCCR2B |= CLOCK_ON;
+	}
+	
+}
+
+
+ISR (TIMER2_COMPA_vect)									// ISR for timer compare match interrupts
+{
+	TIFR2 |= (1 << 1);								// clear compare match interrupt flag
+	if (PORTC & 0x01)								// if output pin (which controls transmitter) is high
+	{
+		PORTC = 0x00;								// Low on pin 23
+	}
+	else
+	PORTC = 0x01;									// High on pin 23
+}
