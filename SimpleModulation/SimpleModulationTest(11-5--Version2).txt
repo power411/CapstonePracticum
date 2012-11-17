@@ -1,0 +1,99 @@
+/*
+ * SendingWithModulationTest.c
+ *
+ * Created: 11/5/2012 8:22:35 PM
+ *  Author: jesbates
+ */ 
+
+
+//#ifndef F_CPU							//burn fuses to set clock frequency
+//#define F_CPU 16000000UL				// or whatever may be your frequency
+//#endif
+// remember to put it before delay.h
+
+/*
+from long version data sheet page 27 - in reference to previous 4 lines of commented out code
+
+8.2.1 Default Clock Source
+The device is shipped with internal RC oscillator at 8.0MHz and with the fuse CKDIV8 programmed,
+resulting in 1.0MHz system clock. The startup time is set to maximum and time-out
+period enabled. (CKSEL = "0010", SUT = "10", CKDIV8 = "0"). The default setting ensures that
+all users can make their desired clock source setting using any available programming interface.
+
+*/
+
+#include <avr/io.h>
+#include <util/delay.h>									 // for _delay_ms()
+#include <avr/interrupt.h>
+
+#define LED_BIT 0
+#define LED_ON 1 << LED_BIT
+#define LED_OFF 0 << LED_BIT
+
+#define CLOCK_BIT 0
+#define CLOCK_ON 1 << CLOCK_BIT
+#define CLOCK_OFF 0 << CLOCK_BIT
+
+int main(void)
+{
+	int i;												// will be used to determine if button is pressed to send IR signal
+	
+	// initialize i/o pins
+	DDRC = 0b00000111;									// initialize port C, sets pins 25,24,23 (PC2,PC1,PC0) as an output
+	PORTC = 0x00;										// leave off pull-up resistors in PORTC, sets output high
+	// end initialize i/o pins
+	
+	// enable interrupts
+	PCICR = 0x02;										// enable Pin Change Interrupt 1
+	PCMSK1 = 0x38;										// enable interrupts on pins 28,27,26 (PC5,PC4,PC3)
+	sei();
+	// end enable interrupts
+	
+	// prepare the timer but dont turn it on
+	OCR2A = 13;											// Output Compare (for Timer2) set at 13 clock cycles (76KHz would be 12.15 nanosec)
+	TCCR2A |= 0x02;										// (sets timer to CTC mode)
+	TIMSK2 |= 0x02;										// (allows interrupts on compare match)
+	TCCR2B |= 0x00;										// make sure timer is not started 
+	// end prepare of timer
+	
+	while(1)
+	{
+		// wait loop
+	}
+	
+}
+
+ISR (PCINT1_vect)										// ISR for pin change interrupts
+{
+	if(TCCR2B & 0x00)									// If timer is not currently on, this must be turn signal has been activated
+	{													//		so start timer
+		
+			if (PORTC = 0x20)							// if pin 28 (PC5) caused interrupt
+			{
+				TCCR2B |= (CLOCK_ON);							// start timer to generate carrier frequency (use NO prescaling)	
+			}		
+			else if (PORTC = 0x10)						// else if pin 27 (PC4) caused interrupt
+			{
+				TCCR2B |= (CLOCK_ON);							// start timer to generate carrier frequency (use NO prescaling)
+			}		
+			else if (PORTC = 0x08)						// else if pin 26 (PC3) caused interrupts
+			{
+				TCCR2B |= (CLOCK_ON);							// start timer to generate carrier frequency (use NO prescaling)
+			}		
+	}
+	else												// If timer is currently on, this must be turn signal has been de-activated 
+	{
+		TCCR2B |= (CLOCK_OFF);									//		so stop timer
+	}
+	
+}
+
+ISR (TIMER2_COMPA_vect)									// ISR for timer compare match interrupts
+{
+	if (PORTC & 0x01)									// if output pin (which controls transmitter) is high
+	{
+		PORTC |= (LED_OFF);								// Low on pin 23
+	}
+	else
+		PORTC |= (LED_ON);								// High on pin 23
+}
